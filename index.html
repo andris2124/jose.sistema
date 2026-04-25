@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Cotizaciones — Jose Andres Garcia Diaz</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --navy: #0d1b2a;
+      --navy-mid: #1a2e44;
+      --amber: #f0a500;
+      --amber-light: #ffc94d;
+      --white: #ffffff;
+      --off-white: #f8f7f4;
+      --gray-100: #f1f0ec;
+      --gray-200: #e2e0d8;
+      --gray-400: #9e9b91;
+      --gray-600: #5c5a53;
+      --text: #1a1a1a;
+      --border: #d8d6ce;
+      --green: #22863a;
+      --red: #e53e3e;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:#e5e3db;font-family:'Manrope',sans-serif;color:var(--text);min-height:100vh;}
+
+    /* ══════════════ LOGIN ══════════════ */
+    #login-overlay{
+      position:fixed;inset:0;background:var(--navy);
+      display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;
+    }
+    #login-box{
+      background:var(--white);width:100%;max-width:360px;
+      padding:40px 36px 36px;box-shadow:0 16px 64px rgba(0,0,0,.4);
+    }
+    .login-brand{font-family:'Syne',sans-serif;font-weight:800;font-size:15px;letter-spacing:.1em;text-transform:uppercase;color:var(--navy);margin-bottom:4px;}
+    .login-sub{font-size:12px;color:var(--gray-400);margin-bottom:32px;}
+    .login-label{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;}
+    #login-box input{width:100%;border:none;border-bottom:2px solid var(--border);outline:none;font-family:'Manrope',sans-serif;font-size:15px;font-weight:500;color:var(--text);padding:6px 0;margin-bottom:22px;background:transparent;transition:border-color .15s;}
+    #login-box input:focus{border-bottom-color:var(--navy);}
+    #login-btn{width:100%;background:var(--navy);color:var(--amber);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:none;padding:14px;cursor:pointer;transition:background .18s;margin-top:4px;}
+    #login-btn:hover{background:var(--navy-mid);}
+    #login-error{display:none;margin-top:14px;background:#fff0f0;border-left:3px solid #e53e3e;padding:10px 14px;font-size:13px;color:#c53030;font-weight:600;}
+
+    /* ══════════════ APP SHELL ══════════════ */
+    #app{display:none;min-height:100vh;flex-direction:column;}
+
+    /* top nav */
+    #topnav{
+      background:var(--navy);padding:0 32px;
+      display:flex;align-items:center;justify-content:space-between;height:56px;
+      position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.3);
+    }
+    .nav-brand{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--white);}
+    .nav-brand span{color:var(--amber);}
+    .nav-user{font-size:12px;color:rgba(255,255,255,.55);display:flex;align-items:center;gap:12px;}
+    .nav-user strong{color:var(--amber-light);}
+    #btn-logout{background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.7);font-family:'Syne',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;cursor:pointer;transition:background .15s;}
+    #btn-logout:hover{background:rgba(255,255,255,.2);}
+
+    /* ══════════════ PANEL / VIEWS ══════════════ */
+    #view-panel,#view-factura,#view-lista,#view-clientes{display:none;padding:32px 24px 60px;max-width:980px;margin:0 auto;width:100%;}
+
+    /* panel cards */
+    .panel-title{font-family:'Syne',sans-serif;font-weight:800;font-size:22px;color:var(--navy);margin-bottom:6px;}
+    .panel-sub{font-size:13px;color:var(--gray-600);margin-bottom:36px;}
+    .panel-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+    @media(max-width:680px){.panel-cards{grid-template-columns:1fr;}}
+    .pcard{
+      background:var(--white);padding:32px 28px;cursor:pointer;
+      box-shadow:0 4px 24px rgba(0,0,0,.08);
+      transition:transform .18s,box-shadow .18s;border-top:4px solid var(--navy);
+    }
+    .pcard:hover{transform:translateY(-4px);box-shadow:0 10px 36px rgba(0,0,0,.14);}
+    .pcard-icon{font-size:32px;margin-bottom:16px;}
+    .pcard-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;}
+    .pcard-desc{font-size:12.5px;color:var(--gray-600);line-height:1.6;}
+    .pcard.accent{border-top-color:var(--amber);}
+    .pcard.green-card{border-top-color:#22863a;}
+
+    /* back btn */
+    .back-btn{display:inline-flex;align-items:center;gap:6px;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--navy);background:none;border:none;cursor:pointer;margin-bottom:24px;padding:0;}
+    .back-btn:hover{color:var(--amber);}
+
+    /* section title */
+    .sec-title{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--navy);margin-bottom:4px;}
+    .sec-sub{font-size:12.5px;color:var(--gray-600);margin-bottom:28px;}
+
+    /* ══════════════ TOOLBAR (factura) ══════════════ */
+    .toolbar{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:14px;}
+    .btn{font-family:'Syne',sans-serif;font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:8px 14px;border:none;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:5px;}
+    .btn.sec{background:rgba(13,27,42,.08);color:var(--navy);}
+    .btn.sec:hover{background:var(--navy);color:var(--white);}
+    .btn.pri{background:var(--navy);color:var(--amber);}
+    .btn.pri:hover{background:var(--navy-mid);}
+    .btn.suc{background:#22863a;color:#fff;}
+    .btn.suc:hover{background:#1a6b2e;}
+    .btn.warn{background:#c05621;color:#fff;}
+    .btn.warn:hover{background:#9c4221;}
+
+    /* ══════════════ DOCUMENT ══════════════ */
+    #invoice{width:100%;background:var(--white);box-shadow:0 8px 48px rgba(0,0,0,.16);}
+    .doc-header{background:var(--navy);padding:28px 52px 28px;position:relative;display:flex;flex-direction:column;gap:18px;}
+    .doc-header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--amber) 0%,var(--amber-light) 60%,transparent 100%);}
+    .header-top{margin-bottom:4px;}
+    .header-bottom{border-top:1px solid rgba(255,255,255,.12);padding-top:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+    .header-bottom-left{display:flex;align-items:center;gap:14px;}
+    .header-top-right{display:flex;align-items:center;gap:20px;}
+    .brand-name{font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--white);letter-spacing:.06em;text-transform:uppercase;line-height:1.1;margin-bottom:8px;}
+    .brand-name input{background:transparent;border:none;outline:none;font-family:'Syne',sans-serif;font-weight:700;font-size:17px;color:var(--white);letter-spacing:.06em;text-transform:uppercase;width:100%;}
+    .brand-sub{font-size:13px;color:rgba(255,255,255,.55);font-weight:400;display:flex;flex-wrap:wrap;gap:4px 16px;}
+    .brand-sub input{background:transparent;border:none;outline:none;font-family:'Manrope',sans-serif;font-size:13px;color:rgba(255,255,255,.55);font-weight:400;border-bottom:1px solid rgba(255,255,255,.18);}
+    .doc-type-badge{display:inline-block;background:var(--amber);color:var(--navy);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;padding:5px 14px;}
+    .doc-number{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;color:var(--white);line-height:1;display:flex;align-items:center;gap:2px;}
+    .doc-number input{background:transparent;border:none;outline:none;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;color:var(--white);width:130px;text-align:right;}
+    .doc-date{font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.4);margin-top:6px;}
+    .doc-date input[type="date"]{background:transparent;border:none;outline:none;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.7);cursor:pointer;color-scheme:dark;}
+    .doc-body{padding:36px 52px 48px;}
+    .client-section{display:flex;flex-direction:column;gap:18px;margin-bottom:32px;padding-bottom:28px;border-bottom:1.5px solid var(--gray-200);}
+    .field-label{font-family:'Syne',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;}
+    .field-value input,.field-value textarea{background:transparent;border:none;border-bottom:1.5px solid var(--border);outline:none;font-family:'Manrope',sans-serif;font-size:14.5px;font-weight:500;color:var(--text);width:100%;padding:4px 0;transition:border-color .15s;}
+    .field-value input:focus,.field-value textarea:focus{border-bottom-color:var(--navy);}
+    .field-value textarea{resize:none;overflow:hidden;line-height:1.6;min-height:1.6em;}
+    .table-wrap{margin-top:4px;}
+    table{width:100%;border-collapse:collapse;font-size:13.5px;}
+    thead{background:var(--navy);}
+    thead th{font-family:'Syne',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);padding:11px 14px;text-align:left;}
+    thead th:first-child{text-align:center;width:56px;}
+    thead th:nth-child(3),thead th:nth-child(4){text-align:right;width:110px;}
+    tbody tr{border-bottom:1px solid var(--gray-200);}
+    tbody tr:nth-child(even){background:var(--gray-100);}
+    tbody tr:hover{background:rgba(240,165,0,.06);}
+    tbody td{padding:9px 14px;vertical-align:top;}
+    tbody td:first-child{text-align:center;width:56px;}
+    tbody td:nth-child(3),tbody td:nth-child(4){text-align:right;width:110px;}
+    tbody td input[type="text"]{border:none;border-bottom:1px solid transparent;outline:none;font-family:'Manrope',sans-serif;font-size:13.5px;font-weight:500;width:100%;background:transparent;text-align:inherit;color:var(--text);cursor:text;transition:border-color .15s;}
+    tbody td input[type="text"]:focus{border-bottom-color:var(--amber);}
+    tbody td textarea.plain{border:none;outline:none;resize:none;overflow:hidden;width:100%;background:transparent;line-height:1.55;font-family:'Manrope',sans-serif;font-size:13.5px;font-weight:500;color:var(--text);min-height:1.55em;}
+    tbody td textarea.plain:focus{outline:none;}
+    tbody td:first-child input{text-align:center;}
+    tbody td:nth-child(3) input{text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;}
+    tbody td:nth-child(4){font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gray-600);}
+    tfoot{background:var(--off-white);}
+    .totals-row td{padding:8px 14px;font-size:13.5px;}
+    .totals-row td:nth-child(1){border:none;background:transparent;}
+    .totals-row td:nth-child(2){font-family:'Syne',sans-serif;font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--gray-600);text-align:right;border-right:none;}
+    .totals-row td:nth-child(3){text-align:right;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gray-600);border-left:1px solid var(--gray-200);}
+    .totals-row.grand{background:var(--navy);}
+    .totals-row.grand td:nth-child(2){color:rgba(255,255,255,.6);font-size:11px;}
+    .totals-row.grand td:nth-child(3){font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:500;color:var(--amber);border-left:none;}
+    #itbis-pct{width:44px;border:none;outline:none;font-family:'JetBrains Mono',monospace;font-size:12px;background:transparent;color:var(--gray-600);text-align:center;border-bottom:1px solid var(--gray-400);}
+    .note-section{margin-top:28px;padding:16px 20px;background:var(--gray-100);border-left:3px solid var(--amber);}
+    .note-section textarea{border:none;outline:none;resize:none;overflow:hidden;width:100%;background:transparent;line-height:1.65;font-family:'Manrope',sans-serif;font-size:13px;color:var(--gray-600);min-height:1.65em;}
+    .signatures{display:flex;justify-content:space-between;align-items:flex-end;margin-top:52px;}
+    .sig-block{min-width:200px;}
+    .sig-line{height:1px;background:var(--navy);width:220px;margin-bottom:8px;}
+    .sig-label{font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:4px;}
+    .sig-name input{border:none;outline:none;background:transparent;font-family:'Manrope',sans-serif;font-weight:700;font-size:12.5px;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;width:220px;}
+    .sig-block.right{text-align:right;}
+    .sig-block.right .sig-line{margin-left:auto;}
+    .sig-block.right .sig-name input{text-align:right;}
+    .doc-stamp{margin-top:36px;padding-top:18px;border-top:1px solid var(--gray-200);display:flex;align-items:center;justify-content:center;gap:8px;}
+    .stamp-dot{width:6px;height:6px;background:var(--amber);border-radius:50%;flex-shrink:0;}
+    .stamp-text{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;color:var(--gray-400);text-transform:uppercase;}
+
+    /* cliente autocomplete dropdown */
+    .client-wrap{position:relative;}
+    #cliente-dropdown{
+      position:absolute;top:100%;left:0;right:0;background:var(--white);
+      border:1.5px solid var(--navy);z-index:200;display:none;max-height:200px;overflow-y:auto;
+      box-shadow:0 8px 24px rgba(0,0,0,.15);
+    }
+    .cdrop-item{padding:10px 14px;font-size:13.5px;cursor:pointer;border-bottom:1px solid var(--gray-200);}
+    .cdrop-item:hover{background:var(--gray-100);}
+    .cdrop-item strong{display:block;font-weight:600;color:var(--navy);}
+    .cdrop-item span{font-size:12px;color:var(--gray-600);}
+    .cdrop-new{padding:10px 14px;font-size:12.5px;cursor:pointer;color:var(--amber);font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-top:2px solid var(--amber);}
+    .cdrop-new:hover{background:var(--amber);color:var(--navy);}
+
+    /* ══════════════ LISTA DE FACTURAS ══════════════ */
+    .facturas-grid{display:flex;flex-direction:column;gap:10px;}
+    .factura-card{
+      background:var(--white);padding:16px 20px;display:flex;align-items:center;
+      justify-content:space-between;gap:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);
+      border-left:4px solid var(--navy);cursor:pointer;transition:box-shadow .15s;
+    }
+    .factura-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.12);}
+    .fc-left{flex:1;}
+    .fc-num{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--amber);margin-bottom:2px;}
+    .fc-cliente{font-weight:700;font-size:15px;color:var(--navy);}
+    .fc-fecha{font-size:12px;color:var(--gray-400);margin-top:2px;}
+    .fc-right{text-align:right;}
+    .fc-total{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:500;color:var(--navy);}
+    .fc-actions{display:flex;gap:6px;margin-top:6px;}
+    .fc-btn{font-family:'Syne',sans-serif;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:5px 10px;border:none;cursor:pointer;transition:background .15s;}
+    .fc-btn.edit{background:var(--navy);color:var(--amber);}
+    .fc-btn.edit:hover{background:var(--navy-mid);}
+    .fc-btn.del{background:#fff0f0;color:#c53030;border:1px solid #fcc;}
+    .fc-btn.del:hover{background:#e53e3e;color:#fff;border-color:#e53e3e;}
+    .fc-btn.print{background:var(--gray-100);color:var(--gray-600);}
+    .fc-btn.print:hover{background:var(--navy);color:var(--white);}
+    .empty-state{text-align:center;padding:60px 20px;color:var(--gray-400);}
+    .empty-state p{font-size:14px;margin-top:8px;}
+
+    /* search bar */
+    .search-wrap{margin-bottom:20px;position:relative;}
+    .search-wrap input{width:100%;border:none;border-bottom:2px solid var(--border);outline:none;font-family:'Manrope',sans-serif;font-size:15px;padding:8px 36px 8px 0;background:transparent;color:var(--text);transition:border-color .15s;}
+    .search-wrap input:focus{border-bottom-color:var(--navy);}
+    .search-wrap::after{content:'🔍';position:absolute;right:6px;top:8px;font-size:14px;pointer-events:none;}
+
+    /* ══════════════ CLIENTES ══════════════ */
+    .clientes-layout{display:grid;grid-template-columns:1fr 1fr;gap:28px;}
+    @media(max-width:720px){.clientes-layout{grid-template-columns:1fr;}}
+    .form-card{background:var(--white);padding:28px 28px;box-shadow:0 4px 24px rgba(0,0,0,.08);}
+    .form-card-title{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--amber);}
+    .form-group{margin-bottom:18px;}
+    .form-group label{display:block;font-family:'Syne',sans-serif;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);margin-bottom:6px;}
+    .form-group input,.form-group textarea{width:100%;border:none;border-bottom:1.5px solid var(--border);outline:none;font-family:'Manrope',sans-serif;font-size:14px;font-weight:500;color:var(--text);padding:6px 0;background:transparent;transition:border-color .15s;}
+    .form-group input:focus,.form-group textarea:focus{border-bottom-color:var(--navy);}
+    .form-group textarea{resize:none;height:60px;}
+    .form-btn{width:100%;background:var(--navy);color:var(--amber);font-family:'Syne',sans-serif;font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;border:none;padding:13px;cursor:pointer;transition:background .18s;margin-top:8px;}
+    .form-btn:hover{background:var(--navy-mid);}
+    .form-btn.cancel{background:var(--gray-100);color:var(--gray-600);margin-top:6px;}
+    .form-btn.cancel:hover{background:var(--gray-200);}
+    .clientes-lista{display:flex;flex-direction:column;gap:8px;max-height:500px;overflow-y:auto;}
+    .cliente-card{background:var(--white);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.05);border-left:3px solid var(--amber);}
+    .cl-info strong{font-weight:700;font-size:14px;color:var(--navy);}
+    .cl-info span{font-size:12px;color:var(--gray-600);display:block;margin-top:2px;}
+    .cl-actions{display:flex;gap:6px;}
+
+    /* toast */
+    #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--navy);color:var(--amber);font-family:'Syne',sans-serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:12px 24px;box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+
+    /* validation msg */
+    #validation-msg{display:none;width:100%;background:#fff3cd;color:#7d4a00;border:1.5px solid #f0a500;padding:12px 18px;font-family:'Manrope',sans-serif;font-size:13.5px;font-weight:600;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+
+    /* modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:rgba(13,27,42,.7);z-index:500;align-items:center;justify-content:center;padding:24px;}
+    .modal-overlay.active{display:flex;}
+    .modal-box{background:var(--white);width:100%;max-width:480px;padding:36px 32px;box-shadow:0 16px 64px rgba(0,0,0,.4);}
+    .modal-title{font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:var(--navy);margin-bottom:20px;}
+
+    /* print */
+    @page{size:A4 portrait;margin:1cm 1.2cm;}
+    @media print{
+      #login-overlay,#topnav,#view-panel,#view-lista,#view-clientes,#toast,.modal-overlay{display:none!important;}
+      #app{display:block!important;}
+      #view-factura{display:block!important;padding:0!important;max-width:100%!important;}
+      .toolbar,#validation-msg,.back-btn,.sec-title,.sec-sub{display:none!important;}
+      *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+      html,body{width:210mm!important;min-width:210mm!important;margin:0!important;padding:0!important;background:#fff!important;}
+      #invoice{width:100%!important;max-width:100%!important;box-shadow:none!important;margin:0!important;}
+      .doc-header{background:#000!important;padding:24px 40px 24px!important;display:flex!important;flex-direction:column!important;gap:14px!important;}
+      .header-bottom{border-top:1px solid rgba(255,255,255,.2)!important;padding-top:14px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;}
+      .brand-name input{font-size:16px!important;color:#fff!important;}
+      .brand-sub,.brand-sub input{font-size:12px!important;color:rgba(255,255,255,.65)!important;}
+      .doc-type-badge{background:#f0a500!important;color:#000!important;font-size:11px!important;padding:4px 12px!important;}
+      .doc-number{font-size:20px!important;color:#fff!important;}
+      .doc-number input{font-size:20px!important;color:#fff!important;width:120px!important;text-align:right!important;}
+      #f-fecha{display:none!important;}
+      #f-fecha-txt{font-size:11px!important;color:rgba(255,255,255,.8)!important;border-bottom:none!important;}
+      .doc-body{padding:28px 40px 40px!important;}
+      .field-value input,.field-value textarea{font-size:13.5px!important;color:#1a1a1a!important;border-bottom:none!important;}
+      table{width:100%!important;font-size:12.5px!important;}
+      thead{background:#000!important;}
+      thead th{color:#fff!important;font-size:9px!important;padding:9px 12px!important;}
+      tbody tr{border-bottom:1px solid #e2e0d8!important;}
+      tbody td{padding:8px 12px!important;color:#1a1a1a!important;}
+      tbody td input,tbody td textarea{color:#1a1a1a!important;font-size:12.5px!important;border:none!important;background:transparent!important;}
+      tfoot{background:#f8f7f4!important;}
+      .totals-row td{padding:7px 12px!important;font-size:12.5px!important;}
+      .totals-row td:nth-child(2){font-size:10px!important;color:#5c5a53!important;text-align:right!important;}
+      .totals-row td:nth-child(3){text-align:right!important;font-size:12px!important;color:#5c5a53!important;border-left:1px solid #e2e0d8!important;}
+      .totals-row.grand{background:#000!important;}
+      .totals-row.grand td:nth-child(2){color:rgba(255,255,255,.6)!important;}
+      .totals-row.grand td:nth-child(3){font-size:16px!important;color:#f0a500!important;border-left:none!important;}
+      .note-section{margin-top:22px!important;padding:14px 18px!important;background:#f1f0ec!important;border-left:3px solid #f0a500!important;}
+      .note-section textarea{font-size:12px!important;color:#5c5a53!important;border:none!important;background:transparent!important;}
+      .signatures{display:flex!important;flex-direction:row!important;justify-content:space-between!important;align-items:flex-end!important;margin-top:44px!important;}
+      .sig-line{height:1px!important;background:#0d1b2a!important;width:200px!important;margin-bottom:8px!important;}
+      .sig-name input{font-size:11.5px!important;color:#0d1b2a!important;border:none!important;background:transparent!important;width:200px!important;}
+      .doc-stamp{margin-top:28px!important;padding-top:14px!important;border-top:1px solid #e2e0d8!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;}
+      .stamp-dot{width:6px!important;height:6px!important;background:#000!important;border-radius:50%!important;}
+      .stamp-text{font-size:9px!important;color:#9e9b91!important;}
+      .doc-number button{display:none!important;}
+      #cliente-dropdown{display:none!important;}
+    }
+
+    @media(max-width:600px){
+      .toolbar{padding:8px 6px;background:var(--navy);margin-bottom:8px;gap:4px;}
+      .btn{font-size:9.5px;padding:7px 8px;}
+      .btn.sec{background:rgba(255,255,255,.12);color:var(--white);}
+      .doc-header{padding:16px 14px;}
+      .doc-body{padding:16px 12px 32px;}
+      .brand-name input{font-size:13px;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="login-overlay">
+  <div id="login-box">
+    <div class="login-brand">Jose Andres Garcia Diaz</div>
+    <div class="login-sub">Sistema de Cotizaciones — Acceso privado</div>
+    <div class="login-label">Usuario</div>
+    <input id="l-user" type="text" placeholder="Usuario" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="login-label">Clave</div>
+    <input id="l-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button id="login-btn" onclick="doLogin()">Entrar</button>
+    <div id="login-error">⚠️ Usuario o clave incorrectos</div>
+  </div>
+</div>
+
+<!-- ══════════════ APP ══════════════ -->
+<div id="app">
+  <div id="topnav">
+    <div class="nav-brand">Redisen <span>·</span> Cotizaciones</div>
+    <div class="nav-user">Sesión: <strong id="nav-username"></strong> <button id="btn-logout" onclick="doLogout()">Salir</button></div>
+  </div>
+
+  <!-- PANEL PRINCIPAL -->
+  <div id="view-panel">
+    <div class="panel-title">Panel Principal</div>
+    <div class="panel-sub">¿Qué deseas hacer hoy?</div>
+    <div class="panel-cards">
+      <div class="pcard accent" onclick="showView('factura');newFactura()">
+        <div class="pcard-icon">📝</div>
+        <div class="pcard-title">Nueva Factura</div>
+        <div class="pcard-desc">Crea una nueva cotización o factura, busca el cliente o agrégalo al instante.</div>
+      </div>
+      <div class="pcard" onclick="showView('lista');renderLista()">
+        <div class="pcard-icon">📋</div>
+        <div class="pcard-title">Facturas Guardadas</div>
+        <div class="pcard-desc">Revisa, edita o imprime todas las facturas registradas en el sistema.</div>
+      </div>
+      <div class="pcard green-card" onclick="showView('clientes');renderClientes()">
+        <div class="pcard-icon">👥</div>
+        <div class="pcard-title">Clientes</div>
+        <div class="pcard-desc">Registra nuevos clientes y gestiona tu base de datos de contactos.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA FACTURA -->
+  <div id="view-factura" style="padding:24px 16px 60px;max-width:920px;margin:0 auto;">
+    <button class="back-btn" onclick="goPanel()">← Volver al Panel</button>
+    <div class="sec-title" id="factura-mode-title">Nueva Cotización</div>
+    <div class="sec-sub" id="factura-mode-sub">Completa los datos y guarda la factura en la base de datos.</div>
+
+    <div class="toolbar">
+      <button class="btn sec" onclick="undoLast()">↩ Deshacer</button>
+      <button class="btn sec" onclick="vaciarFormulario()">🗑 Vaciar</button>
+      <button class="btn sec" onclick="addRow()">+ Fila</button>
+      <button class="btn sec" onclick="removeRow()">− Fila</button>
+      <button id="btn-stamp" class="btn sec" onclick="toggleStamp()">🔖 Quitar sello</button>
+      <button class="btn suc" onclick="guardarFactura()">💾 Guardar</button>
+      <button class="btn pri" onclick="validateAndPrint()">🖨 Imprimir / PDF</button>
+    </div>
+
+    <div id="validation-msg"></div>
+
+    <div id="invoice">
+      <div class="doc-header">
+        <div class="header-top">
+          <div class="brand-name"><input id="f-empresa" type="text" value="JOSE ANDRES GARCIA DIAZ"></div>
+          <div class="brand-sub">
+            <span>📍</span>
+            <input id="f-ciudad" type="text" value="Santiago, Rep. Dom." style="width:200px;">
+            &nbsp;·&nbsp; Cel.:
+            <input id="f-cel" type="text" value="849-285-5981" style="width:120px;">
+          </div>
+        </div>
+        <div class="header-bottom">
+          <div class="header-bottom-left">
+            <div class="doc-type-badge">Cotización</div>
+            <div class="doc-number" style="display:flex;align-items:center;gap:4px;">
+              #<input id="f-conum" type="text" value="0001071C">
+              <button onclick="stepConum(-1)" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:14px;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;" title="Bajar">−</button>
+              <button onclick="stepConum(1)" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:14px;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;" title="Subir">+</button>
+            </div>
+          </div>
+          <div class="doc-date" style="display:flex;align-items:center;gap:6px;">
+            <input id="f-fecha-txt" type="text" placeholder="dd/mm/aaaa" style="background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,.3);outline:none;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(255,255,255,.7);width:100px;color-scheme:dark;" oninput="syncFromText()">
+            <input id="f-fecha" type="date" min="2024-01-01" style="opacity:0;position:absolute;width:20px;height:20px;cursor:pointer;" onchange="syncFromCalendar()">
+            <span onclick="document.getElementById('f-fecha').showPicker()" style="cursor:pointer;font-size:14px;opacity:.6;" title="Calendario">📅</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="doc-body">
+        <div class="client-section">
+          <div>
+            <div class="field-label">Cliente</div>
+            <div class="field-value client-wrap">
+              <input id="f-cliente" type="text" placeholder="Nombre del cliente — escribe para buscar" autocomplete="off"
+                oninput="clienteInputHandler()" onfocus="clienteInputHandler()" onblur="setTimeout(closeDrop,200)">
+              <div id="cliente-dropdown"></div>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Descripción del Servicio</div>
+            <div class="field-value"><textarea id="f-desc" class="lined"></textarea></div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table id="items-table">
+            <thead>
+              <tr>
+                <th>Cant.</th>
+                <th>Descripción</th>
+                <th>Precio</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+            <tfoot>
+              <tr class="totals-row">
+                <td colspan="2" style="border:none;background:transparent;"></td>
+                <td>Sub Total</td>
+                <td id="subtotal">$0.00</td>
+              </tr>
+              <tr class="totals-row">
+                <td colspan="2" style="border:none;background:transparent;"></td>
+                <td>ITBIS (<input id="itbis-pct" type="number" value="18" min="0" max="100">%)</td>
+                <td id="itbis">$0.00</td>
+              </tr>
+              <tr class="totals-row grand">
+                <td colspan="2" style="border:none;background:transparent;"></td>
+                <td>Total General</td>
+                <td style="text-align:right;" id="total">$0.00</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="note-section">
+          <div class="field-label" style="margin-bottom:8px;">Nota</div>
+          <textarea id="f-nota"></textarea>
+        </div>
+
+        <div class="signatures">
+          <div class="sig-block">
+            <div class="sig-label">Firma del Prestador</div>
+            <div class="sig-line"></div>
+            <div class="sig-name"><input id="f-firma1" type="text" value="JOSE ANDRES GARCIA DIAZ"></div>
+          </div>
+          <div class="sig-block right">
+            <div class="sig-label">Firma del Cliente</div>
+            <div class="sig-line"></div>
+            <div class="sig-name"><input id="f-firma2" type="text" value=""></div>
+          </div>
+        </div>
+
+        <div class="doc-stamp">
+          <div class="stamp-dot"></div>
+          <div class="stamp-text">Documento válido por 30 días · Santiago, Rep. Dom.</div>
+          <div class="stamp-dot"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISTA LISTA FACTURAS -->
+  <div id="view-lista">
+    <button class="back-btn" onclick="goPanel()">← Volver al Panel</button>
+    <div class="sec-title">Facturas Guardadas</div>
+    <div class="sec-sub">Edita, imprime o elimina cualquier factura registrada.</div>
+    <div class="search-wrap"><input id="lista-search" type="text" placeholder="Buscar por cliente, número o fecha…" oninput="renderLista()"></div>
+    <div id="facturas-grid" class="facturas-grid"></div>
+  </div>
+
+  <!-- VISTA CLIENTES -->
+  <div id="view-clientes">
+    <button class="back-btn" onclick="goPanel()">← Volver al Panel</button>
+    <div class="sec-title">Gestión de Clientes</div>
+    <div class="sec-sub">Registra nuevos clientes para usarlos rápidamente en tus facturas.</div>
+    <div class="clientes-layout">
+      <div class="form-card">
+        <div class="form-card-title" id="cliente-form-title">Registrar Cliente</div>
+        <input type="hidden" id="cliente-edit-id">
+        <div class="form-group"><label>Nombre completo *</label><input id="cn-nombre" type="text" placeholder="Nombre del cliente"></div>
+        <div class="form-group"><label>Empresa / Negocio</label><input id="cn-empresa" type="text" placeholder="Nombre de la empresa (opcional)"></div>
+        <div class="form-group"><label>Teléfono</label><input id="cn-tel" type="text" placeholder="000-000-0000"></div>
+        <div class="form-group"><label>Email</label><input id="cn-email" type="email" placeholder="correo@ejemplo.com"></div>
+        <div class="form-group"><label>Dirección / Notas</label><textarea id="cn-dir" placeholder="Dirección u otras notas…"></textarea></div>
+        <button class="form-btn" onclick="guardarCliente()">Guardar Cliente</button>
+        <button class="form-btn cancel" id="btn-cancelar-edicion" style="display:none;" onclick="cancelarEdicionCliente()">Cancelar</button>
+      </div>
+      <div>
+        <div class="form-card-title" style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--navy);margin-bottom:16px;">Clientes Registrados</div>
+        <div id="clientes-lista" class="clientes-lista"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL para agregar cliente rápido desde factura -->
+<div id="modal-cliente" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-title">Agregar Cliente Rápido</div>
+    <div class="form-group"><label>Nombre completo *</label><input id="mc-nombre" type="text" placeholder="Nombre del cliente"></div>
+    <div class="form-group"><label>Empresa / Negocio</label><input id="mc-empresa" type="text" placeholder="Opcional"></div>
+    <div class="form-group"><label>Teléfono</label><input id="mc-tel" type="text" placeholder="000-000-0000"></div>
+    <div class="form-group"><label>Email</label><input id="mc-email" type="email" placeholder="correo@ejemplo.com"></div>
+    <button class="form-btn" onclick="guardarClienteRapido()">Guardar y Usar</button>
+    <button class="form-btn cancel" onclick="closeModal()">Cancelar</button>
+  </div>
+</div>
+
+<div id="toast">✓ Guardado</div>
+
+<script>
+// ══════════════════════════════════════════
+// USUARIOS
+// ══════════════════════════════════════════
+const USERS = [
+  { user: 'admin',      pass: 'formulario23' },
+  { user: 'Jhondri',   pass: 'formulario23' },
+  { user: 'Jose Andres', pass: 'formulario23' }
+];
+let currentUser = null;
+
+// ══════════════════════════════════════════
+// BASE DE DATOS (IndexedDB)
+// ══════════════════════════════════════════
+let db;
+function initDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('CotizacionesDB', 2);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('facturas')) {
+        const fs = d.createObjectStore('facturas', { keyPath: 'id', autoIncrement: true });
+        fs.createIndex('cliente', 'cliente', { unique: false });
+        fs.createIndex('fecha', 'fecha', { unique: false });
+      }
+      if (!d.objectStoreNames.contains('clientes')) {
+        const cs = d.createObjectStore('clientes', { keyPath: 'id', autoIncrement: true });
+        cs.createIndex('nombre', 'nombre', { unique: false });
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(); };
+    req.onerror = e => reject(e);
+  });
+}
+
+function dbGet(store) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = reject;
+  });
+}
+
+function dbPut(store, data) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(data);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = reject;
+  });
+}
+
+function dbDelete(store, id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = reject;
+  });
+}
+
+// ══════════════════════════════════════════
+// LOGIN / LOGOUT
+// ══════════════════════════════════════════
+function doLogin() {
+  const user = g('l-user').value.trim();
+  const pass = g('l-pass').value;
+  const found = USERS.find(u => u.user.toLowerCase() === user.toLowerCase() && u.pass === pass);
+  if (found) {
+    currentUser = found.user;
+    g('login-overlay').style.display = 'none';
+    g('app').style.display = 'flex';
+    g('nav-username').textContent = currentUser;
+    initDB().then(() => showView('panel'));
+  } else {
+    const err = g('login-error');
+    err.style.display = 'block';
+    g('l-pass').value = '';
+    g('l-pass').focus();
+    setTimeout(() => { err.style.display = 'none'; }, 3500);
+  }
+}
+
+function doLogout() {
+  currentUser = null;
+  g('app').style.display = 'none';
+  g('login-overlay').style.display = 'flex';
+  g('l-user').value = '';
+  g('l-pass').value = '';
+  g('l-user').focus();
+}
+
+// ══════════════════════════════════════════
+// NAVEGACIÓN
+// ══════════════════════════════════════════
+function g(id) { return document.getElementById(id); }
+
+function showView(name) {
+  ['panel','factura','lista','clientes'].forEach(v => {
+    const el = g('view-' + v);
+    if (el) el.style.display = v === name ? (v === 'panel' ? 'block' : 'block') : 'none';
+  });
+}
+
+function goPanel() { showView('panel'); }
+
+// ══════════════════════════════════════════
+// HELPERS FECHA
+// ══════════════════════════════════════════
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function isoToDisplay(iso) {
+  if (!iso) return '';
+  const p = iso.split('-');
+  if (p.length !== 3) return iso;
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+function displayToIso(txt) {
+  const p = txt.split('/');
+  if (p.length !== 3 || p[2].length !== 4) return '';
+  return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');
+}
+function syncFromCalendar() {
+  g('f-fecha-txt').value = isoToDisplay(g('f-fecha').value);
+}
+function syncFromText() {
+  const iso = displayToIso(g('f-fecha-txt').value);
+  if (iso) g('f-fecha').value = iso;
+}
+
+// ══════════════════════════════════════════
+// FORMATO
+// ══════════════════════════════════════════
+function fmt(n) {
+  if (n == null || isNaN(n)) return '';
+  return '$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ══════════════════════════════════════════
+// NÚMERO DE COTIZACIÓN
+// ══════════════════════════════════════════
+function stepConum(dir) {
+  let val = g('f-conum').value.trim();
+  const match = val.match(/^(.*?)(\d+)([A-Za-z]*)$/);
+  if (!match) return;
+  const prefix = match[1], num = parseInt(match[2],10), digits = match[2].length, suffix = match[3];
+  const next = Math.max(0, num + dir);
+  g('f-conum').value = prefix + String(next).padStart(digits,'0') + suffix;
+}
+
+// ══════════════════════════════════════════
+// TABLA DE ÍTEMS
+// ══════════════════════════════════════════
+function autoGrow(el) { el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
+function initAutoGrow() {
+  document.querySelectorAll('textarea').forEach(ta => {
+    autoGrow(ta);
+    ta.addEventListener('input', () => autoGrow(ta));
+  });
+}
+
+function buildRow(cant, desc, precio) {
+  const tr = document.createElement('tr');
+  const pv = (precio!=='' && precio!=null && !isNaN(precio)) ? precio : '';
+  const tv = pv!=='' ? fmt(parseFloat(pv)) : '';
+  tr.innerHTML =
+    '<td><input type="text" value="'+cant+'" style="width:36px;text-align:center;" oninput="recalc()"></td>'+
+    '<td><textarea class="plain">'+desc+'</textarea></td>'+
+    '<td><input type="text" class="precio" value="'+pv+'" style="text-align:right;width:90px;font-family:\'JetBrains Mono\',monospace;font-size:13px;" oninput="recalc()"></td>'+
+    '<td class="row-total" style="text-align:right;">'+tv+'</td>';
+  return tr;
+}
+
+function loadRows(rows) {
+  g('tbody').innerHTML = '';
+  rows.forEach(r => g('tbody').appendChild(buildRow(r.c, r.d, r.p)));
+  recalc();
+  setTimeout(initAutoGrow, 30);
+}
+
+function emptyRows() {
+  return [{c:'',d:'',p:''},{c:'',d:'',p:''},{c:'',d:'',p:''},{c:'',d:'',p:''},{c:'',d:'',p:''}];
+}
+
+function addRow() { g('tbody').appendChild(buildRow('','','')); recalc(); setTimeout(initAutoGrow,20); }
+function removeRow() {
+  const tb = g('tbody');
+  if (tb.rows.length > 1) tb.deleteRow(tb.rows.length-1);
+  recalc();
+}
+
+function checkAutoRow() {
+  const rows = g('tbody').querySelectorAll('tr');
+  const last = rows[rows.length-1];
+  if (!last) return;
+  const c = last.querySelector('td:nth-child(1) input').value.trim();
+  const d = last.querySelector('td:nth-child(2) textarea').value.trim();
+  const p = last.querySelector('.precio').value.trim();
+  if (c || d || p) addRow();
+}
+
+function recalc() {
+  let sub = 0;
+  g('tbody').querySelectorAll('tr').forEach(tr => {
+    const ci = tr.querySelector('td:nth-child(1) input');
+    const pi = tr.querySelector('.precio');
+    const tc = tr.querySelector('.row-total');
+    const cant = parseFloat(ci ? ci.value : '') || 1;
+    const val = parseFloat(pi.value.replace(/[$,]/g,''));
+    if (!isNaN(val)) { const lt = cant*val; sub+=lt; tc.textContent=fmt(lt); }
+    else tc.textContent='';
+  });
+  const pct = parseFloat(g('itbis-pct').value) || 0;
+  const itbis = sub*pct/100;
+  g('subtotal').textContent = fmt(sub);
+  g('itbis').textContent = fmt(itbis);
+  g('total').textContent = fmt(sub+itbis);
+}
+
+// ══════════════════════════════════════════
+// SNAPSHOT / UNDO
+// ══════════════════════════════════════════
+let undoStack = [], snapTimer = null;
+
+function takeSnapshot() {
+  const rows = [];
+  g('tbody').querySelectorAll('tr').forEach(tr => {
+    rows.push({
+      c: tr.querySelector('td:nth-child(1) input').value,
+      d: tr.querySelector('td:nth-child(2) textarea').value,
+      p: tr.querySelector('.precio').value
+    });
+  });
+  return {
+    conum: g('f-conum').value, empresa: g('f-empresa').value,
+    ciudad: g('f-ciudad').value, cel: g('f-cel').value,
+    fecha: g('f-fecha').value, cliente: g('f-cliente').value,
+    desc: g('f-desc').value, nota: g('f-nota').value,
+    firma1: g('f-firma1').value, firma2: g('f-firma2').value,
+    rows
+  };
+}
+
+function applySnapshot(s) {
+  g('f-conum').value=s.conum; g('f-empresa').value=s.empresa;
+  g('f-ciudad').value=s.ciudad; g('f-cel').value=s.cel;
+  g('f-fecha').value=s.fecha; g('f-cliente').value=s.cliente;
+  g('f-fecha-txt').value=isoToDisplay(s.fecha);
+  g('f-firma1').value=s.firma1; g('f-firma2').value=s.firma2;
+  const d=g('f-desc'); d.value=s.desc; autoGrow(d);
+  const n=g('f-nota'); n.value=s.nota; autoGrow(n);
+  loadRows(s.rows);
+}
+
+function saveSnapshot() { undoStack.push(takeSnapshot()); if(undoStack.length>50)undoStack.shift(); }
+function scheduleSnapshot() { clearTimeout(snapTimer); snapTimer=setTimeout(saveSnapshot,800); }
+function undoLast() { if(!undoStack.length){showToast('No hay cambios anteriores');return;} applySnapshot(undoStack.pop()); }
+
+// ══════════════════════════════════════════
+// VACIAR
+// ══════════════════════════════════════════
+function vaciarFormulario() {
+  if (!confirm('¿Vaciar el formulario?')) return;
+  saveSnapshot();
+  editingFacturaId = null;
+  g('f-cliente').value='';
+  const d=g('f-desc'); d.value=''; autoGrow(d);
+  const n=g('f-nota'); n.value=''; autoGrow(n);
+  loadRows(emptyRows());
+  g('factura-mode-title').textContent='Nueva Cotización';
+  g('factura-mode-sub').textContent='Completa los datos y guarda la factura en la base de datos.';
+}
+
+// ══════════════════════════════════════════
+// STAMP
+// ══════════════════════════════════════════
+let stampVisible = true;
+function toggleStamp() {
+  stampVisible = !stampVisible;
+  document.querySelector('.doc-stamp').style.display = stampVisible ? '' : 'none';
+  g('btn-stamp').textContent = stampVisible ? '🔖 Quitar sello' : '🔖 Mostrar sello';
+}
+
+// ══════════════════════════════════════════
+// VALIDACIÓN / IMPRESIÓN
+// ══════════════════════════════════════════
+function showError(msg) {
+  const el=g('validation-msg'); el.textContent=msg; el.style.display='block';
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>{el.style.display='none';},6000);
+}
+
+function validateAndPrint() {
+  if (!g('f-cliente').value.trim()) { showError('⚠️ Falta el nombre del cliente'); g('f-cliente').focus(); return; }
+  if (!g('f-desc').value.trim()) { showError('⚠️ Falta la Descripción del Servicio'); g('f-desc').focus(); return; }
+  const rows = g('tbody').querySelectorAll('tr');
+  for (let i=0;i<rows.length;i++) {
+    const tr=rows[i];
+    const cant=tr.querySelector('td:nth-child(1) input').value.trim();
+    const rd=tr.querySelector('td:nth-child(2) textarea').value.trim();
+    const precio=tr.querySelector('.precio').value.trim();
+    if ((rd||precio||cant)&&!cant){showError('⚠️ Fila '+(i+1)+': falta la Cantidad');return;}
+    if ((cant||precio)&&!rd){showError('⚠️ Fila '+(i+1)+': falta la Descripción');return;}
+    if ((cant||rd)&&!precio){showError('⚠️ Fila '+(i+1)+': falta el Precio');return;}
+  }
+  window.print();
+}
+
+// ══════════════════════════════════════════
+// GUARDAR / EDITAR FACTURAS
+// ══════════════════════════════════════════
+let editingFacturaId = null;
+
+function newFactura() {
+  editingFacturaId = null;
+  g('f-fecha').value = todayStr();
+  g('f-fecha-txt').value = isoToDisplay(todayStr());
+  g('f-cliente').value = '';
+  const d=g('f-desc'); d.value=''; autoGrow(d);
+  const n=g('f-nota'); n.value=''; autoGrow(n);
+  loadRows(emptyRows());
+  g('factura-mode-title').textContent = 'Nueva Cotización';
+  g('factura-mode-sub').textContent = 'Completa los datos y guarda la factura en la base de datos.';
+  undoStack=[];
+  setTimeout(()=>{ initAutoGrow(); saveSnapshot(); g('invoice').addEventListener('input',scheduleSnapshot); g('tbody').addEventListener('input',checkAutoRow); g('itbis-pct').addEventListener('input',recalc); },80);
+}
+
+async function guardarFactura() {
+  const cliente = g('f-cliente').value.trim();
+  if (!cliente) { showError('⚠️ Falta el nombre del cliente'); g('f-cliente').focus(); return; }
+  const rows = [];
+  g('tbody').querySelectorAll('tr').forEach(tr => {
+    rows.push({
+      c: tr.querySelector('td:nth-child(1) input').value,
+      d: tr.querySelector('td:nth-child(2) textarea').value,
+      p: tr.querySelector('.precio').value
+    });
+  });
+  const totalText = g('total').textContent;
+  const data = {
+    conum: g('f-conum').value, empresa: g('f-empresa').value,
+    ciudad: g('f-ciudad').value, cel: g('f-cel').value,
+    fecha: g('f-fecha').value, cliente,
+    desc: g('f-desc').value, nota: g('f-nota').value,
+    firma1: g('f-firma1').value, firma2: g('f-firma2').value,
+    itbis: g('itbis-pct').value,
+    total: totalText, rows,
+    updatedAt: new Date().toISOString(),
+    user: currentUser
+  };
+  if (editingFacturaId !== null) data.id = editingFacturaId;
+  const id = await dbPut('facturas', data);
+  editingFacturaId = editingFacturaId || id;
+  showToast(editingFacturaId ? '✓ Factura actualizada' : '✓ Factura guardada');
+  g('factura-mode-title').textContent = 'Editando Cotización';
+  g('factura-mode-sub').textContent = 'Cotización guardada — #' + data.conum;
+}
+
+function loadFacturaForEdit(factura) {
+  editingFacturaId = factura.id;
+  g('f-conum').value = factura.conum || '';
+  g('f-empresa').value = factura.empresa || '';
+  g('f-ciudad').value = factura.ciudad || '';
+  g('f-cel').value = factura.cel || '';
+  g('f-fecha').value = factura.fecha || '';
+  g('f-fecha-txt').value = isoToDisplay(factura.fecha || '');
+  g('f-cliente').value = factura.cliente || '';
+  const d=g('f-desc'); d.value=factura.desc||''; autoGrow(d);
+  const n=g('f-nota'); n.value=factura.nota||''; autoGrow(n);
+  g('f-firma1').value = factura.firma1 || '';
+  g('f-firma2').value = factura.firma2 || '';
+  if (factura.itbis) g('itbis-pct').value = factura.itbis;
+  loadRows(factura.rows || emptyRows());
+  g('factura-mode-title').textContent = 'Editando Cotización';
+  g('factura-mode-sub').textContent = 'Cliente: ' + factura.cliente + ' — #' + factura.conum;
+  undoStack=[];
+  setTimeout(()=>{ initAutoGrow(); saveSnapshot(); },80);
+  showView('factura');
+}
+
+// ══════════════════════════════════════════
+// LISTA DE FACTURAS
+// ══════════════════════════════════════════
+async function renderLista() {
+  const facturas = await dbGet('facturas');
+  const q = (g('lista-search').value || '').toLowerCase();
+  const filtered = facturas.filter(f => {
+    return !q ||
+      (f.cliente||'').toLowerCase().includes(q) ||
+      (f.conum||'').toLowerCase().includes(q) ||
+      (f.fecha||'').includes(q);
+  }).reverse();
+
+  const grid = g('facturas-grid');
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty-state">📭<p>No hay facturas' + (q?' que coincidan':'') + '.</p></div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(f => `
+    <div class="factura-card">
+      <div class="fc-left">
+        <div class="fc-num">#${f.conum||'—'}</div>
+        <div class="fc-cliente">${f.cliente||'Sin nombre'}</div>
+        <div class="fc-fecha">${isoToDisplay(f.fecha||'')} · Guardado por ${f.user||'—'}</div>
+      </div>
+      <div class="fc-right">
+        <div class="fc-total">${f.total||'$0.00'}</div>
+        <div class="fc-actions">
+          <button class="fc-btn edit" onclick="editarFactura(${f.id})">✏️ Editar</button>
+          <button class="fc-btn print" onclick="imprimirFactura(${f.id})">🖨</button>
+          <button class="fc-btn del" onclick="eliminarFactura(${f.id})">🗑</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function editarFactura(id) {
+  const facturas = await dbGet('facturas');
+  const f = facturas.find(x => x.id === id);
+  if (f) loadFacturaForEdit(f);
+}
+
+async function imprimirFactura(id) {
+  const facturas = await dbGet('facturas');
+  const f = facturas.find(x => x.id === id);
+  if (f) { loadFacturaForEdit(f); setTimeout(()=>window.print(),400); }
+}
+
+async function eliminarFactura(id) {
+  if (!confirm('¿Eliminar esta factura? Esta acción no se puede deshacer.')) return;
+  await dbDelete('facturas', id);
+  showToast('🗑 Factura eliminada');
+  renderLista();
+}
+
+// ══════════════════════════════════════════
+// CLIENTES
+// ══════════════════════════════════════════
+async function guardarCliente() {
+  const nombre = g('cn-nombre').value.trim();
+  if (!nombre) { showToast('⚠️ El nombre es requerido'); return; }
+  const data = {
+    nombre, empresa: g('cn-empresa').value.trim(),
+    tel: g('cn-tel').value.trim(), email: g('cn-email').value.trim(),
+    dir: g('cn-dir').value.trim()
+  };
+  const eid = g('cliente-edit-id').value;
+  if (eid) data.id = parseInt(eid);
+  await dbPut('clientes', data);
+  showToast('✓ Cliente guardado');
+  cancelarEdicionCliente();
+  renderClientes();
+}
+
+function cancelarEdicionCliente() {
+  g('cliente-edit-id').value = '';
+  g('cn-nombre').value=''; g('cn-empresa').value=''; g('cn-tel').value='';
+  g('cn-email').value=''; g('cn-dir').value='';
+  g('cliente-form-title').textContent = 'Registrar Cliente';
+  g('btn-cancelar-edicion').style.display='none';
+}
+
+async function renderClientes() {
+  const clientes = await dbGet('clientes');
+  const lista = g('clientes-lista');
+  if (!clientes.length) {
+    lista.innerHTML = '<div class="empty-state" style="padding:30px 0;"><p>No hay clientes registrados aún.</p></div>';
+    return;
+  }
+  lista.innerHTML = clientes.map(c => `
+    <div class="cliente-card">
+      <div class="cl-info">
+        <strong>${c.nombre}</strong>
+        <span>${[c.empresa,c.tel,c.email].filter(Boolean).join(' · ')||'Sin datos adicionales'}</span>
+      </div>
+      <div class="cl-actions">
+        <button class="fc-btn edit" onclick="editarCliente(${c.id})">✏️</button>
+        <button class="fc-btn del" onclick="eliminarCliente(${c.id})">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function editarCliente(id) {
+  const clientes = await dbGet('clientes');
+  const c = clientes.find(x => x.id === id);
+  if (!c) return;
+  g('cliente-edit-id').value = c.id;
+  g('cn-nombre').value = c.nombre||'';
+  g('cn-empresa').value = c.empresa||'';
+  g('cn-tel').value = c.tel||'';
+  g('cn-email').value = c.email||'';
+  g('cn-dir').value = c.dir||'';
+  g('cliente-form-title').textContent = 'Editar Cliente';
+  g('btn-cancelar-edicion').style.display = 'block';
+  g('cn-nombre').focus();
+}
+
+async function eliminarCliente(id) {
+  if (!confirm('¿Eliminar este cliente?')) return;
+  await dbDelete('clientes', id);
+  showToast('🗑 Cliente eliminado');
+  renderClientes();
+}
+
+// ══════════════════════════════════════════
+// AUTOCOMPLETE CLIENTE EN FACTURA
+// ══════════════════════════════════════════
+async function clienteInputHandler() {
+  const q = g('f-cliente').value.toLowerCase();
+  const clientes = await dbGet('clientes');
+  const match = clientes.filter(c =>
+    c.nombre.toLowerCase().includes(q) || (c.empresa||'').toLowerCase().includes(q)
+  );
+  const drop = g('cliente-dropdown');
+  if (!q && !match.length) { drop.style.display='none'; return; }
+  let html = match.slice(0,8).map(c => `
+    <div class="cdrop-item" onmousedown="seleccionarCliente('${c.nombre.replace(/'/g,"\\'")}','${(c.empresa||'').replace(/'/g,"\\'")}')">
+      <strong>${c.nombre}</strong>
+      <span>${[c.empresa,c.tel].filter(Boolean).join(' · ')}</span>
+    </div>
+  `).join('');
+  html += `<div class="cdrop-new" onmousedown="abrirModalCliente()">＋ Agregar "${g('f-cliente').value}" como cliente nuevo</div>`;
+  drop.innerHTML = html;
+  drop.style.display = 'block';
+}
+
+function seleccionarCliente(nombre, empresa) {
+  g('f-cliente').value = nombre;
+  if (empresa && !g('f-firma2').value) g('f-firma2').value = empresa;
+  closeDrop();
+}
+
+function closeDrop() {
+  g('cliente-dropdown').style.display = 'none';
+}
+
+function abrirModalCliente() {
+  g('mc-nombre').value = g('f-cliente').value;
+  g('mc-empresa').value=''; g('mc-tel').value=''; g('mc-email').value='';
+  g('modal-cliente').classList.add('active');
+  setTimeout(()=>g('mc-nombre').focus(),100);
+}
+
+function closeModal() {
+  g('modal-cliente').classList.remove('active');
+}
+
+async function guardarClienteRapido() {
+  const nombre = g('mc-nombre').value.trim();
+  if (!nombre) { showToast('⚠️ El nombre es requerido'); return; }
+  const data = {
+    nombre, empresa: g('mc-empresa').value.trim(),
+    tel: g('mc-tel').value.trim(), email: g('mc-email').value.trim(), dir: ''
+  };
+  await dbPut('clientes', data);
+  g('f-cliente').value = nombre;
+  if (data.empresa && !g('f-firma2').value) g('f-firma2').value = data.empresa;
+  closeModal();
+  showToast('✓ Cliente guardado y seleccionado');
+}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = g('toast'); t.textContent=msg; t.style.opacity='1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ t.style.opacity='0'; }, 2800);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+window.addEventListener('load', () => { g('l-user').focus(); });
+</script>
+</body>
+</html>
