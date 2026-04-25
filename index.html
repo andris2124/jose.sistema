@@ -5,6 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sistema de Cotizaciones — Jose Andres Garcia Diaz</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <!-- Firebase compat (funciona con file:// en Safari) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDc82BgHG6F6UNpu8f--_r05C5vHOLuiVg",
+      authDomain: "quote-system-19171.firebaseapp.com",
+      projectId: "quote-system-19171",
+      storageBucket: "quote-system-19171.firebasestorage.app",
+      messagingSenderId: "722648742116",
+      appId: "1:722648742116:web:87a0e9f715b4ca7f2b94f1",
+      measurementId: "G-HNCM4X15Q1"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const _firestoreDb = firebase.firestore();
+
+    // Adaptar la API compat a la misma interfaz que usa el resto del código
+    window._fdb = _firestoreDb;
+    window._fsOps = {
+      collection: (db, name) => db.collection(name),
+      getDocs: (ref) => ref.get(),
+      doc: (db, col, id) => db.collection(col).doc(id),
+      setDoc: (ref, data) => ref.set(data),
+      deleteDoc: (ref) => ref.delete(),
+      getDoc: (ref) => ref.get(),
+    };
+    window._firebaseReady = true;
+    document.dispatchEvent(new Event('firebase-ready'));
+  </script>
   <style>
     :root {
       --navy: #0d1b2a;
@@ -343,6 +372,10 @@
 <div id="app">
   <div id="topnav">
     <div class="nav-brand">Cotizaciones</div>
+    <div id="sync-status" style="font-family:'Syne',sans-serif;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45);display:flex;align-items:center;gap:5px;">
+      <span id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:#888;display:inline-block;transition:background .3s;"></span>
+      <span id="sync-txt">Conectando...</span>
+    </div>
     <div class="nav-user" style="position:relative;">
       Sesión: <strong id="nav-username"></strong>
       <button id="btn-usermenu" onclick="toggleUserMenu(event)">⚙ Cuenta ▾</button>
@@ -619,123 +652,124 @@ let currentUserIsAdmin = false;
 let usersCache = []; // cargados desde IndexedDB
 
 // ══════════════════════════════════════════
-// BASE DE DATOS (IndexedDB)
+// BASE DE DATOS (Firestore / Nube)
 // ══════════════════════════════════════════
-let db;
-function initDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('CotizacionesDB', 4);
-    req.onupgradeneeded = e => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains('facturas')) {
-        const fs = d.createObjectStore('facturas', { keyPath: 'id', autoIncrement: true });
-        fs.createIndex('cliente', 'cliente', { unique: false });
-        fs.createIndex('fecha', 'fecha', { unique: false });
-      }
-      if (!d.objectStoreNames.contains('clientes')) {
-        const cs = d.createObjectStore('clientes', { keyPath: 'id', autoIncrement: true });
-        cs.createIndex('nombre', 'nombre', { unique: false });
-      }
-      if (!d.objectStoreNames.contains('descripciones')) {
-        const ds = d.createObjectStore('descripciones', { keyPath: 'id', autoIncrement: true });
-        ds.createIndex('texto', 'texto', { unique: true });
-      }
-      if (!d.objectStoreNames.contains('usuarios')) {
-        const us = d.createObjectStore('usuarios', { keyPath: 'user' });
-      }
-      if (!d.objectStoreNames.contains('config')) {
-        d.createObjectStore('config', { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = e => {
-      db = e.target.result;
-      seedUsuarios().then(resolve).catch(() => resolve());
-    };
-    req.onerror = e => reject(e);
-  });
-}
+// Las funciones mantienen la misma firma que antes para no cambiar el resto del código.
+// Colecciones Firestore: facturas, clientes, descripciones, usuarios, config
 
-function seedUsuarios() {
-  // Una sola transaccion para todos los usuarios - Safari cierra tx si hay await entre ops
+function waitFirebase() {
   return new Promise(resolve => {
-    try {
-      const tx = db.transaction('usuarios', 'readwrite');
-      const store = tx.objectStore('usuarios');
-      let pending = DEFAULT_USERS.length;
-      if (pending === 0) { resolve(); return; }
-      DEFAULT_USERS.forEach(u => {
-        const r = store.get(u.user);
-        r.onsuccess = () => {
-          if (!r.result) store.put(u);
-          pending--;
-          if (pending === 0) resolve();
-        };
-        r.onerror = () => { pending--; if (pending === 0) resolve(); };
-      });
-      tx.onerror = () => resolve();
-    } catch(e) { resolve(); }
+    if (window._firebaseReady) { resolve(); return; }
+    document.addEventListener('firebase-ready', () => resolve(), { once: true });
+    setTimeout(resolve, 6000); // fallback por si falla
   });
 }
 
-function getUsuarios() {
-  return new Promise((resolve) => {
+let _initDone = false;
+async function initDB() {
+  await waitFirebase();
+  _initDone = true;
+  await seedUsuarios();
+}
+
+async function seedUsuarios() {
+  try {
+    const { collection, getDocs, doc, setDoc } = window._fsOps;
+    const fdb = window._fdb;
+    const snap = await getDocs(collection(fdb, 'usuarios'));
+    if (snap.empty) {
+      // Primera vez: sembrar usuarios por defecto
+      for (const u of DEFAULT_USERS) {
+        await setDoc(doc(fdb, 'usuarios', u.user), u);
+      }
+    }
+  } catch(e) { console.warn('seedUsuarios error:', e); }
+}
+
+async function getUsuarios() {
+  try {
+    const { collection, getDocs } = window._fsOps;
+    const snap = await getDocs(collection(window._fdb, 'usuarios'));
+    const users = snap.docs.map(d => d.data());
+    return users.length ? users : DEFAULT_USERS;
+  } catch(e) { return DEFAULT_USERS; }
+}
+
+async function putUsuario(data) {
+  try {
+    const { doc, setDoc } = window._fsOps;
+    await setDoc(doc(window._fdb, 'usuarios', data.user), data);
+  } catch(e) { console.warn('putUsuario error:', e); }
+}
+
+// dbGet: obtiene todos los documentos de una colección
+// Para facturas devuelve ordenado por fecha; convierte id string→number para compatibilidad
+async function dbGet(storeName) {
+  try {
+    const { collection, getDocs } = window._fsOps;
+    const snap = await getDocs(collection(window._fdb, storeName));
+    const docs = snap.docs.map(d => {
+      const data = d.data();
+      // Mantener id numérico para facturas (para compatibilidad con el resto del código)
+      if (storeName === 'facturas' && data.id === undefined) data.id = d.id;
+      return data;
+    });
+    // Ordenar facturas por id numérico ascendente
+    if (storeName === 'facturas') docs.sort((a,b) => (a.id||0) - (b.id||0));
+    return docs;
+  } catch(e) { console.warn('dbGet error:', e); return []; }
+}
+
+// dbPut: guarda un documento. Para facturas genera id numérico auto si no tiene.
+async function dbPut(storeName, data) {
+  try {
+    const { doc, setDoc, collection, getDocs } = window._fsOps;
+    const fdb = window._fdb;
+    if (storeName === 'facturas') {
+      if (!data.id) {
+        // Generar id numérico incrementando el máximo existente
+        const snap = await getDocs(collection(fdb, 'facturas'));
+        let maxId = 0;
+        snap.docs.forEach(d => { const id = d.data().id || 0; if (id > maxId) maxId = id; });
+        data.id = maxId + 1;
+      }
+      await setDoc(doc(fdb, 'facturas', String(data.id)), data);
+      return data.id;
+    } else {
+      // Para otras colecciones usar id o auto
+      const docId = data.id ? String(data.id) : (data.key || data.texto || Date.now().toString());
+      await setDoc(doc(fdb, storeName, docId), data);
+      return docId;
+    }
+  } catch(e) { console.warn('dbPut error:', e); throw e; }
+}
+
+// dbDelete: elimina por id
+async function dbDelete(storeName, id) {
+  try {
+    const { doc, deleteDoc } = window._fsOps;
+    await deleteDoc(doc(window._fdb, storeName, String(id)));
+  } catch(e) { console.warn('dbDelete error:', e); }
+}
+
+// getLastConum / setLastConum usan la colección 'config'
+function getLastConum() {
+  return new Promise(async resolve => {
     try {
-      if (!db || !db.objectStoreNames.contains('usuarios')) { resolve(DEFAULT_USERS); return; }
-      const tx = db.transaction('usuarios', 'readonly');
-      const req = tx.objectStore('usuarios').getAll();
-      req.onsuccess = () => resolve(req.result && req.result.length ? req.result : DEFAULT_USERS);
-      req.onerror = () => resolve(DEFAULT_USERS);
-      tx.onerror = () => resolve(DEFAULT_USERS);
-    } catch(e) { resolve(DEFAULT_USERS); }
+      const { doc, getDoc } = window._fsOps;
+      const snap = await getDoc(doc(window._fdb, 'config', 'lastConum'));
+      resolve(snap.exists ? snap.data().value : null);
+    } catch(e) { resolve(null); }
   });
 }
 
-function putUsuario(data) {
-  return new Promise((resolve) => {
+function setLastConum(val) {
+  return new Promise(async resolve => {
     try {
-      if (!db || !db.objectStoreNames.contains('usuarios')) { resolve(); return; }
-      const tx = db.transaction('usuarios', 'readwrite');
-      const req = tx.objectStore('usuarios').put(data);
-      req.onsuccess = () => resolve();
-      req.onerror = () => resolve();
-      tx.onerror = () => resolve();
-    } catch(e) { resolve(); }
-  });
-}
-
-function dbGet(store) {
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction(store, 'readonly');
-      const req = tx.objectStore(store).getAll();
-      req.onsuccess = () => resolve(req.result || []);
-      req.onerror = () => resolve([]);
-      tx.onerror = () => resolve([]);
-    } catch(e) { resolve([]); }
-  });
-}
-
-function dbPut(store, data) {
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction(store, 'readwrite');
-      const req = tx.objectStore(store).put(data);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = e => reject(e);
-      tx.onerror = e => reject(e);
-    } catch(e) { reject(e); }
-  });
-}
-
-function dbDelete(store, id) {
-  return new Promise((resolve, reject) => {
-    try {
-      const tx = db.transaction(store, 'readwrite');
-      const req = tx.objectStore(store).delete(id);
-      req.onsuccess = () => resolve();
-      req.onerror = () => resolve();
-      tx.onerror = () => resolve();
-    } catch(e) { resolve(); }
+      const { doc, setDoc } = window._fsOps;
+      await setDoc(doc(window._fdb, 'config', 'lastConum'), { key: 'lastConum', value: val });
+    } catch(e) {}
+    resolve();
   });
 }
 
@@ -814,32 +848,6 @@ function goPanel() { showView('panel'); }
 // ══════════════════════════════════════════
 // AUTO-INCREMENTO NÚMERO DE COTIZACIÓN
 // ══════════════════════════════════════════
-function getLastConum() {
-  return new Promise((resolve) => {
-    try {
-      if (!db || !db.objectStoreNames.contains('config')) { resolve(null); return; }
-      const tx = db.transaction('config', 'readonly');
-      const req = tx.objectStore('config').get('lastConum');
-      req.onsuccess = () => resolve(req.result ? req.result.value : null);
-      req.onerror = () => resolve(null);
-      tx.onerror = () => resolve(null);
-    } catch(e) { resolve(null); }
-  });
-}
-
-function setLastConum(val) {
-  return new Promise((resolve) => {
-    try {
-      if (!db || !db.objectStoreNames.contains('config')) { resolve(); return; }
-      const tx = db.transaction('config', 'readwrite');
-      const req = tx.objectStore('config').put({ key: 'lastConum', value: val });
-      req.onsuccess = () => resolve();
-      req.onerror = () => resolve();
-      tx.onerror = () => resolve();
-    } catch(e) { resolve(); }
-  });
-}
-
 function incrementConum(val) {
   const match = val.trim().match(/^(.*?)(\d+)([A-Za-z]*)$/);
   if (!match) return val;
@@ -1321,12 +1329,14 @@ async function guardarFactura() {
   } else {
     data.createdBy = currentUser;
   }
+  setSyncStatus('saving');
   const id = await dbPut('facturas', data);
   const isNew = editingFacturaId === null;
   editingFacturaId = editingFacturaId || id;
   // Guardar el conum usado para auto-incremento en la próxima cotización nueva
   if (isNew) await setLastConum(data.conum);
-  showToast(isNew ? '✓ Cotización guardada' : '✓ Cotización actualizada');
+  setSyncStatus('online');
+  showToast(isNew ? '✓ Cotización guardada en la nube' : '✓ Cotización actualizada en la nube');
   g('factura-mode-title').textContent = 'Editando Cotización';
   g('factura-mode-sub').textContent = 'Cotización guardada — #' + data.conum;
 }
@@ -1551,6 +1561,32 @@ function showToast(msg) {
 // INIT
 // ══════════════════════════════════════════
 window.addEventListener('load', () => { g('l-user').focus(); });
+
+// ══════════════════════════════════════════
+// ESTADO DE SINCRONIZACIÓN CON LA NUBE
+// ══════════════════════════════════════════
+function setSyncStatus(state) {
+  // state: 'connecting' | 'online' | 'saving' | 'error'
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-txt');
+  if (!dot || !txt) return;
+  const map = {
+    connecting: { color: '#888',    label: 'Conectando...' },
+    online:     { color: '#48bb78', label: '☁ Nube activa' },
+    saving:     { color: '#f0a500', label: '↑ Guardando...' },
+    error:      { color: '#e53e3e', label: '✕ Sin conexión' }
+  };
+  const s = map[state] || map.connecting;
+  dot.style.background = s.color;
+  txt.textContent = s.label;
+}
+
+document.addEventListener('firebase-ready', () => {
+  setSyncStatus('online');
+});
+setTimeout(() => {
+  if (!window._firebaseReady) setSyncStatus('error');
+}, 7000);
 </script>
 </body>
 </html>
